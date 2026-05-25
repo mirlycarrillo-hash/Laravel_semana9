@@ -25,7 +25,7 @@ class AuthController extends Controller
      * 1. Valida que los campos no estén vacíos.
      * 2. Intenta autenticar al usuario con Auth::attempt().
      * 3. Si falla, regresa con mensaje de error.
-     * 4. Si tiene éxito, regenera la sesión (seguridad) y redirige.
+     * 4. Si tiene éxito, guarda el carrito, regenera la sesión y lo restaura.
      */
     public function login(Request $request)
     {
@@ -44,9 +44,18 @@ class AuthController extends Controller
         // Paso 2: Intentar autenticar
         $credenciales = $request->only('email', 'password');
 
+        // 🚀 RESPALDO 1: Guardamos los productos del carrito antes de que Laravel regenere la sesión
+        $carritoTemporal = session('carrito', []);
+
         if (Auth::attempt($credenciales)) {
             // Paso 3: Autenticación exitosa
             $request->session()->regenerate(); // Previene ataques de session fixation
+
+            // 🚀 RESTAURACIÓN 1: Volvemos a meter el carrito en la nueva sesión del usuario logueado
+            if (!empty($carritoTemporal)) {
+                session(['carrito' => $carritoTemporal]);
+            }
+
             return redirect()->route('home')->with('success', '¡Bienvenido, ' . Auth::user()->name . '!');
         }
 
@@ -57,14 +66,23 @@ class AuthController extends Controller
     }
 
     /**
-     * Cierra la sesión del usuario actual.
+     * Cierra la sesión del usuario actual sin perder el carrito.
      */
     public function logout(Request $request)
     {
+        // 🚀 RESPALDO 2: Guardamos los productos del carrito antes de destruir la sesión activa
+        $carritoTemporal = session('carrito', []);
+
         Auth::logout();
 
+        // Se destruye la sesión vieja de forma segura
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // 🚀 RESTAURACIÓN 2: Inyectamos de vuelta el carrito en la nueva sesión de invitado limpia
+        if (!empty($carritoTemporal)) {
+            session(['carrito' => $carritoTemporal]);
+        }
 
         return redirect()->route('login')->with('info', 'Ha cerrado sesión correctamente.');
     }

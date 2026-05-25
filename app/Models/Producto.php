@@ -13,7 +13,8 @@ class Producto extends Model
 
     protected $primaryKey = 'id_producto';
 
-    protected $fillable = ['nombre', 'marca', 'precio', 'stock', 'id_categoria'];
+    // Se añade 'foto' al fillable para permitir la asignación masiva
+    protected $fillable = ['nombre', 'marca', 'precio', 'stock', 'id_categoria', 'foto'];
 
     // Relación: Un producto pertenece a una categoría
     public function categoria()
